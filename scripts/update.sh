@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+#
+# Brings a deployed copy of Muxel up to date with upstream.
+#
+# Runs inside the operator's own GitHub Actions, invoked by the stub workflow
+# in .github/workflows/update.yml. The stub stays a stub on purpose: the
+# Cloudflare GitHub App cannot create workflow files when it makes the copy,
+# so the stub is pasted by a person exactly once and can never be updated by
+# this mechanism. Everything that might need to change lives here instead,
+# and this file arrives with every sync like any other code.
+#
+# The stub copies this script out of the tree before running it, because the
+# sync below replaces the tree it is reading from.
+#
+# Two rules the sync must never break, both learned the hard way:
+#
+#  - Never touch .github/. A push from the default GITHUB_TOKEN that creates
+#    or updates a workflow file is rejected by GitHub itself ("refusing to
+#    allow a GitHub App to create or update workflow ... without `workflows`
+#    permission"), verified against a live repository. Excluding the whole
+#    directory keeps the push acceptable and keeps the operator's stub theirs.
+#
+#  - Never adopt upstream's history. This repository's history is unrelated
+#    to upstream's, and resetting onto a shallow fetch leaves the branch at a
+#    graft point the remote will refuse. Only the tree is taken, so every
+#    pushed object is created locally and no force is ever needed.
+
+set -euo pipefail
+
+UPSTREAM_REPO="${UPSTREAM_REPO:-thankywal/muxel}"
+
+if [ "${GITHUB_REPOSITORY:-}" = "$UPSTREAM_REPO" ]; then
+  echo "This is upstream. Nothing to pull."
+  exit 0
+fi
+
+# Only adopt a commit whose own checks passed, and pin everything after to the
+# sha that was checked. Checking a moving ref and then fetching it again would
+# let a commit that arrived in between slip through unexamined. A commit with
+# no check runs yet reads as not ready rather than as passing.
+sha=""
+if command -v gh >/dev/null 2>&1 && [ -n "${GH_TOKEN:-}" ]; then
+  sha=$(gh api "repos/${UPSTREAM_REPO}/commits/main" --jq '.sha')
+  # A check that has not finished has a null conclusion, and null is neither a
+  # pass nor a failure. Folding it in with the failures reported a run that was
+  # still going as a run that had failed — an owner reading this log would go
+  # looking for a break upstream that was not there.
+  state=$(gh api "repos/${UPSTREAM_REPO}/commits/${sha}/check-runs" --jq \
+    '[.check_runs[].conclusion]
+     | if length == 0 or any(. == null) then "pending"
+       elif all(. == "success" or . == "skipped" or . == "neutral") then "success"
+       else "failed" end')
+  echo "Upstream ${sha:0:8} checks: ${state}"
+  if [ "$state" != "success" ]; then
+    # Said differently for each, because they are different situations and only
+    # one of them is anybody's problem. Neither promises another run: whether
+    # one comes depends on a schedule this script cannot see.
+    if [ "$state" = "pending" ]; then
+      echo "Upstream is still being checked. Nothing applied; try again once it settles."
+    else
+      echo "Upstream checks failed. Nothing applied, deliberately."
+    fi
+    exit 0
+  fi
+fi
+
+git remote remove upstream 2>/dev/null || true
+git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+
+SENTINELS="VERSION wrangler.jsonc packages/runtime/src/index.ts"
+
+# Whether every sentinel is in the tree we just fetched.
+have_sentinels() {
+  local tree
+  tree=$(git ls-tree -r --name-only FETCH_HEAD 2>/dev/null) || return 1
+  local name
+  for name in $SENTINELS; do
+    printf '%s\n' "$tree" | grep -qx "$name" || return 1
+  done
+  return 0
+}
+
+# The gate before anything destructive: if this does not look like Muxel, stop
+# before a single file has been removed. A truncated or foreign tree committed
+# here would deploy as an empty site everywhere at once.
+#
+# But a missing file has two causes and only one of them is upstream's. A
+# shallow fetch has twice arrived here short — the transfer reports success and
+# the tree comes back incomplete — and the gate then announced that upstream
+# was missing its own entry point. Both times upstream was fine, and both times
+# somebody went looking for a break that was not there.
+#
+# So the shallow fetch is treated as a guess. If it does not carry what it
+# should, the full history is fetched, which cannot be partial in this way, and
+# only a tree that is still missing something is upstream's problem.
+git fetch --depth=1 upstream "${sha:-main}"
+
+if ! have_sentinels; then
+  echo "Shallow fetch came back incomplete. Fetching in full before deciding."
+  git fetch --no-tags upstream "${sha:-main}"
+fi
+
+if ! have_sentinels; then
+  echo "Upstream ${sha:-main} really is missing one of: ${SENTINELS}." >&2
+  echo "Refusing to continue. Nothing has been changed." >&2
+  exit 1
+fi
+
+# wrangler.jsonc holds the identifiers of the resources in this account, and
+# .github/ holds the operator's stub. Both are excluded from the removal and
+# from the checkout, so the sync commit never contains either.
+git ls-files -z -- . ':!wrangler.jsonc' ':!.github' | xargs -0 -r rm -f
+git checkout FETCH_HEAD -- . ':!wrangler.jsonc' ':!.github'
+
+git add -A
+if git diff --cached --quiet; then
+  echo "Already current."
+  exit 0
+fi
+
+git -c user.name="muxel-update" -c user.email="muxel-update@users.noreply.github.com" \
+  commit -m "Update from upstream ${sha:-main}
+
+Applied by .github/workflows/update.yml running scripts/update.sh. The
+Worker configuration in wrangler.jsonc and the .github directory are
+preserved: the first holds this account's resource identifiers, the
+second cannot be pushed by the workflow token at all."
+
+git push origin HEAD
+echo "Updated. Workers Builds will redeploy from this push."

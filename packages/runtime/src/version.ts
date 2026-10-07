@@ -1,0 +1,29 @@
+/**
+ * Released version of this deployment.
+ *
+ * A deployed copy has no link back to where it came from, so it cannot be told
+ * that a fix exists. It checks instead: the scheduled handler compares this
+ * against the VERSION file upstream and tells the owner when they differ.
+ *
+ * Bump this in the same commit as the change worth telling people about. The
+ * root VERSION file must match, which a test enforces.
+ */
+export const MUXEL_VERSION = "0.24.0";
+
+/** Where a deployment looks to find out whether it is behind. */
+export const UPSTREAM_VERSION_URL =
+  "https://raw.githubusercontent.com/thankywal/muxel/main/VERSION";
+
+/**
+ * Where updates come from, as the two shapes that are needed.
+ *
+ * One constant used to hold the URL and was also interpolated into GitHub API
+ * paths, which produced `/repos/https://github.com/.../branches/main` and a 404
+ * on the first call the self update makes. So it never worked, for anyone, and
+ * the error said only that GitHub had said 404.
+ *
+ * The slug is the record and the URL is derived from it, so the two cannot
+ * drift, and the names say which is which at the call site.
+ */
+export const UPSTREAM_SLUG = "thankywal/muxel";
+export const UPSTREAM_REPO_URL = `https://github.com/${UPSTREAM_SLUG}`;

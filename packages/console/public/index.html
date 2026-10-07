@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Muxel — your own AI business assistant, in your own cloud</title>
+<meta name="description" content="Muxel answers your customers on your website and on Telegram from your own price list and policies, running entirely inside your own Cloudflare account. No hosted backend, and no Telegram account needed to run it. Your data never leaves your account.">
+<link rel="icon" href="/assets/logo.png">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/demo.css">
+<style>
+  header { padding: 22px 0; }
+  .nav { display: flex; align-items: center; justify-content: space-between; }
+  .hero { padding: 56px 0 40px; }
+  .hero h1 { font-size: 50px; line-height: 1.1; letter-spacing: -.03em; margin: 0 0 18px; font-weight: 800; }
+  .hero h1 span { background: linear-gradient(92deg, var(--orange), var(--blue) 70%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { font-size: 20px; color: #334155; max-width: 640px; margin: 0 0 28px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin: 44px 0; }
+  .grid .card { padding: 24px; }
+  .grid h3 { margin: 0 0 8px; font-size: 17px; }
+  .grid p { margin: 0; color: var(--muted); font-size: 15px; }
+  .own { padding: 34px; margin: 8px 0 48px; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .own h2 { margin: 0 0 6px; font-size: 24px; letter-spacing: -.02em; }
+  .own p { margin: 0; color: var(--muted); max-width: 520px; }
+  .cf { display: flex; align-items: center; gap: 10px; padding: 14px 20px;
+        border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; }
+  footer { border-top: 1px solid var(--line); padding: 26px 0 44px; color: var(--muted); font-size: 14px;
+           display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .own-band { padding: 30px 32px; margin: 8px 0 20px; }
+  .own-band h2 { margin: 0 0 22px; font-size: 22px; letter-spacing: -.02em; }
+  .own-more { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .own-note { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.6; max-width: 72ch; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+  .grid3 .one { display: flex; gap: 13px; }
+  .grid3 .ic { width: 38px; height: 38px; border-radius: 11px; background: #fff4ec;
+               display: grid; place-items: center; flex: none; color: var(--orange-ink); }
+  .grid3 .ic svg { width: 19px; height: 19px; }
+  .grid3 b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .grid3 p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+  @media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .hero h1 { font-size: 36px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="nav">
+    <div class="brand"><img src="/assets/logo.png" alt=""><b>Muxel</b></div>
+    <nav style="display:flex;gap:18px;align-items:center">
+      <a class="muted" href="https://github.com/thankywal/muxel">GitHub</a>
+      <a class="btn btn-ghost" href="/">Open console</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>We cannot show you<br>a list of our users.<br><span>We do not have one.</span></h1>
+    <p>
+      Muxel is an AI assistant that answers your customers on your website and on
+      Telegram, from your own price list and your own policies. It deploys into
+      <b>your</b> Cloudflare account in about ten minutes, on the free plan, with a key
+      you make up and no Telegram account at all. There is no server of ours anywhere
+      in the path.
+    </p>
+    <p style="font-size:17px;color:var(--muted);margin-top:-14px">
+      That is not a promise about what we would not do with your data. It is an
+      architecture in which we never receive it. When you open the console, it has to
+      ask you for your own deployment's address, because it genuinely does not know.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://deploy.workers.cloudflare.com/?url=https://github.com/thankywal/muxel">Deploy to your Cloudflare</a>
+      <a class="btn btn-ghost" href="/">Open the console</a>
+    </div>
+  </section>
+
+  <!--
+    The demonstration.
+
+    This replaces a grid of claims about the product with the product making
+    them. It answers the questions a shop owner actually arrives with, and it
+    says every time that the answers are written rather than generated: a
+    scripted reply presented as a live model would be the one dishonest thing
+    on a page whose whole argument is that nothing here is hidden.
+
+    A visitor who types their own question gets told so, and gets the two steps
+    that would let them ask it for real.
+  -->
+  <section class="demo" id="demo">
+    <div class="demo-thread" id="thread"></div>
+    <div class="demo-foot">
+      <!-- The console's own composer, locked. Clicking it explains why. -->
+      <div class="composer" role="button" tabindex="0" aria-label="Ask your own question">
+        <div class="composer-text">Ask about your businesses, or tell it what to change</div>
+        <div class="composer-row">
+          <span class="clip" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+              stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.4 11.05 12.2 20.2a5 5 0 0 1-7.1-7.1l9.2-9.1a3.3 3.3 0 1 1 4.7 4.7l-9.2 9.2a1.7 1.7 0 0 1-2.4-2.4l8.5-8.4"/></svg></span>
+          <span class="composer-model">Qwen 3.8 27B</span>
+          <span class="grow"></span>
+          <span class="send" id="demoSend">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7"/></svg></span>
+          <span class="send stop" id="demoStop" hidden>
+            <svg viewBox="0 0 24 24" width="15" height="15"><rect x="6" y="6" width="12" height="12"
+              rx="2" fill="currentColor"/></svg></span>
+        </div>
+      </div>
+      <div class="openers" id="demoChips"></div>
+    </div>
+  </section>
+
+  <!--
+    The three things an owner asks before they will try this: what do I have to
+    run, what do I have to pay, and is it mine. Word for word the same as the
+    console's own intro screen, because they are the same claims.
+  -->
+  <section class="card own-band">
+    <h2>No VPS. Nothing of yours left running. Start at $0.</h2>
+    <div class="grid3">
+      <div class="one">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+          stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span>
+        <div>
+          <b>Nothing to run</b>
+          <p>No VPS to rent, no server to patch, no computer of yours that has to stay on.
+             Cloudflare runs the code in your account, and it is running whether your laptop is
+             open or not.</p>
+        </div>
+      </div>
+      <div class="one">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+        <div>
+          <b>Start at $0</b>
+          <p>Deploying it costs nothing and asks for no card: there is no Muxel account to make and
+             nothing to sign up for. Whatever it goes on to cost is Cloudflare's own bill, in your
+             own account, where you can see it.</p>
+        </div>
+      </div>
+      <div class="one">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+        <div>
+          <b>The free plan covers it</b>
+          <p>Cloudflare includes 10,000 neurons a day, which we measured at about 880 replies on
+             Gemma&nbsp;4. Past that you are on Cloudflare's own pricing, in your own account, and
+             the agent is yours either way.</p>
+        </div>
+      </div>
+    </div>
+    <div class="own-more">
+    <p class="own-note">
+      The runtime is not the thing Muxel charges for. When it does charge, it will be for the parts
+      that need a company behind them: verified Messenger, Instagram and WhatsApp channels, one
+      console over many businesses for agencies, and a hosted tier for owners who would rather not
+      touch Cloudflare, which will be the most expensive one because it is the only one where we can
+      see anything. None of that exists yet. Today there is nothing to buy.
+    </p>
+    </div>
+  </section>
+
+  <section class="card own">
+    <div>
+      <h2>Bring your own cloud</h2>
+      <p>
+        One click deploys Muxel into your account on Cloudflare's free plan. Workers runs it,
+        D1 stores it, Vectorize does the retrieval, KV holds your sealed keys. We never see any
+        of it. R2 is the one piece nothing binds by default, because enabling it asks for a
+        payment method: add a bucket and the original of each uploaded file is kept too.
+      </p>
+    </div>
+    <div class="cf"><span class="dot"></span> Cloudflare · Workers · Workers AI · D1 · Vectorize · KV</div>
+  </section>
+
+  <footer>
+    <div>© 2026 Muxel, from Oro Shin.</div>
+    <div style="display:flex;gap:18px">
+      <a href="https://github.com/thankywal/muxel">Source</a>
+      <a href="/docs">Guide</a>
+      <a href="/">Console</a>
+    </div>
+  </footer>
+
+</div>
+
+<script src="/demo.js"></script>
+</body>
+</html>
